@@ -1,0 +1,464 @@
+---
+title: "Semantic Distances"
+author: "Anna Chinni"
+format: pdf
+editor: visual
+---
+
+#Setup
+
+```{r}
+rm(list = ls())
+
+# List of packages
+packages <- c("corrr", "ggplot2", "lme4", "lmerTest", "FactoMineR", "grid","png","cowplot","magick", "purrr", "combinat", "ggimage","dplyr","tidyverse","knitr", "readxl", "writexl", "tidytext", "forcats", "ggrepel", "stringr", "jsonlite")
+```
+
+```{r}
+
+install_and_load_packages <- function(packages) {
+  for(package in packages) {
+    if(!require(package, character.only = TRUE)) {
+      install.packages(package, dependencies = TRUE)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+# Call the function with the list of packages
+install_and_load_packages(packages)
+
+```
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## Functions
+
+We operationalized semantic discriminability using the metric semantic distance
+
+Semantic distance: - assumed associations ratings between features and concepts are normally distributed with a mean equal to the mean association rating and variance that is largest when the association rating is closest to the center of the rating scale. - defined: in an assignment, the absolute difference in the probabilities of each assignment being chosen by a random individual. - delta_x = (x1 + x4) - (x2 + x3)
+
+x1 = assignment Concept 1 with Feature 1 x2 = assignment Concept 1 with feature 2 x3 = assignment Concept 2 with feature 1 x4 = assignment Concept 2 with feature 2
+
+If delta_x \> 0 then feature 1 will be assigned with concept 1 and feature 2 will be assigned with concept 2. If delta_x \< 0 then feature 1 will be assigned with concept 2 and feature 2 will be assigned with concept 1.
+
+- delta_x = \|Prob(delta_x\>0) - Prob(delta_x \<0)\|
+
+```{r}
+#semantic distance function 
+get_semantic_distance <- function(concept1, concept2) {
+  # Helper function for calculating the standard deviation
+  sig <- function(xi) {
+    return(max(1.4 * xi * (1 - xi), 0.1))
+  }
+  
+  # Extract values from input vectors
+  x1 <- concept1[1]
+  x2 <- concept1[2]
+  x3 <- concept2[1]
+  x4 <- concept2[2]
+  
+  # Calculate semantic distance
+  num <- (x1 + x4) - (x2 + x3)
+  denom <- sqrt(sig(x1)^2 + sig(x2)^2 + sig(x3)^2 + sig(x4)^2)
+  prob_dx_gt_zero <- pnorm(num / denom)
+  prob_dx_lt_zero <- 1 - prob_dx_gt_zero
+  semantic_distance <- abs(prob_dx_gt_zero - prob_dx_lt_zero)
+  
+  # Global assignment (1 = outer vs. 0 = inner edges)
+  assignDiff <- (x1 + x4) - (x2 + x3)
+  if (assignDiff > 0) {
+    assign <- 1
+  } else if (assignDiff < 0) {
+    assign <- 0
+  } else {
+    assign <- NA
+  }
+  
+  return(list(semantic_distance = semantic_distance, assign = assign))
+}
+```
+
+Function for calculating entropy of each concept's distribution, takes a matrix where each concept is a row and each texture is a column with values as the average association rating for each pair.
+
+```{r}
+#entropy for each distribution
+get_ents<-function(x){
+  l={}
+  for(item in x){
+    l<-rbind(l,entropies_c[item])
+    
+    return(l)
+  }
+  
+}
+
+```
+
+Function for Total Variation - difference in association distributions
+
+```{r}
+#TV
+total_variation <- function(p_j1, p_j2) {
+  0.5 * sum(abs(p_j1 - p_j2))
+}
+```
+
+## Load Data
+
+```{r}
+current_dir<- getwd()
+
+#data_dir <-paste0(current_dir,'/data/')
+
+#data_files <-list.files(path = data_dir, full.names = TRUE, pattern="*.csv")
+#print(paste0('we have data from ',length(data_files),' participants'))
+
+#average association ratings
+assoc <- read_csv("../data/tactile_associations_wide.csv")
+
+#load in embedding space and key
+#texture_space <- read_csv("triplet_textures_groupEmb_3d.csv")
+#levels <- read_csv("d_levels.csv")
+
+#textures
+#textures <- read_csv("texture_list.csv")
+textures <- data.frame(
+  texture = colnames(assoc)[colnames(assoc) != "concept"]
+)
+
+```
+
+## Calc entropies
+
+```{r}
+#define matrix structured tibble to plug into function for entropy values
+ratings_mat <- assoc %>% 
+  ungroup()
+
+p_mat <- ratings_mat
+
+#make sure that concepts column in character value
+
+p_mat$concept<-as.character(p_mat$concept)
+
+#check
+class(p_mat$concept)
+
+#make sure is matrix
+#p_mat <- as.matrix(p_mat)
+
+```
+
+```{r}
+#loop for normalizing ratings values
+for(i in 1:nrow(p_mat)){
+  p_mat[i,2:ncol(p_mat)]<- p_mat[i,2:ncol(p_mat)]/sum(p_mat[i,2:ncol(p_mat)])
+}
+
+#convert to base r data frame to work with original loop
+p_mat <- as.data.frame(p_mat)
+
+#empty vector to store entropy values
+entropies = c()
+
+#loop calculating entropy of each distribution --- KM original code for base r data frame
+for (i in 1:nrow(p_mat)){
+  logs = c()
+  for(j in 2:length(p_mat[i,1:ncol(p_mat)])){
+    if(p_mat[i,j]==0){
+      logs<- append(logs,0)
+    }else{
+    logs<- append(logs, log(p_mat[i,j]))
+    }
+  }
+  entropies<- append(entropies, sum(-logs*p_mat[i,2:ncol(p_mat)]))
+}
+
+
+#add names to entropy vector
+names(entropies)<- ratings_mat$concept
+
+
+#turn into tibble to merge with main associations ratings tibble
+entropies_df <- tibble(
+  concept = names(entropies),
+  entropy = as.numeric(entropies)  
+)
+
+```
+
+## Perceptual Distance
+
+Perceptual distance - operationalized as the euclidean distance between visual textures in the raw embedding space estimated with Salmon in our triplet study.
+
+```{r}
+#Generate all texture pairs
+texture_pairs <- combn(textures$texture, 2, simplify = FALSE)
+```
+
+```{r}
+#perceptual distance for each texture pair
+
+#clean texture names
+levels <- levels %>% 
+  mutate(
+    texture =  gsub(".*(D\\d+).png", "\\1", levels$x)
+  )
+levels <- levels %>% 
+  select(texture)
+
+#remove extra row from embedding
+texture_space <- texture_space %>% 
+  slice(-1)
+
+#combine with levels
+texture_space <- bind_cols(levels, texture_space)
+
+texture_space <- texture_space %>% 
+  select(texture, `0`, `1`, `2`)
+
+#rename
+texture_space <- texture_space %>% 
+  rename(
+    x = `0`,
+    y = `1`,
+    z = `2`
+  )
+  
+#use euclidean distance to calculate perceptual distance measure for each texture pair ----
+
+#euclidean distance for 2 points in 3 dimensions
+euclidean_distance <- function(row1, row2) {
+  sqrt((row2$x - row1$x)^2 + (row2$y - row1$y)^2 + (row2$z - row1$z)^2)
+}
+
+#place to store the results
+percept_distances_df <- data.frame(texture1 = character(0),
+                                   texture2 = character(0),
+                                   perceptual_distance = numeric(0))
+
+# Loop through the texture pairs and calculate the distance
+for (i in seq_along(texture_pairs)) {
+  # Extract the texture names for this pair
+  texture1 <- texture_pairs[[i]][1]
+  texture2 <- texture_pairs[[i]][2]
+  
+  # Extract the rows corresponding to the textures
+  row1 <- texture_space[texture_space$texture == texture1, ]
+  row2 <- texture_space[texture_space$texture == texture2, ]
+  
+  #calc euclidean distance
+  percept_distance <- euclidean_distance(row1, row2)
+  
+  #store
+  percept_distances_df <- rbind(percept_distances_df, data.frame(texture1 = texture1, 
+                                                                 texture2 = texture2, 
+                                                                 perceptual_distance = percept_distance))
+}
+
+```
+
+# Calc Semantic Distances
+
+```{r}
+#fruits
+# fruits <- ratings_trials_exp %>% 
+#   filter(concept %in% c("blueberry", "lemon", "mango", "strawberry", "watermelon", "apple", "banana", "cherry", "grape", "peach")) %>% 
+#   group_by(concept, texture) %>% 
+#   summarize(AverageRatings = mean(response), .groups = "drop")
+
+# Generate all concept pairs
+concepts <- unique(assoc$concept)
+concept_pairs <- combn(concepts, 2, simplify = FALSE) 
+
+# fruits_reshaped <- fruits %>%
+#   spread(key = concept, value = AverageRatings)
+
+# Initialize a dataframe to store results
+semantic_distances_df <- data.frame(
+  concept1 = character(),
+  concept2 = character(),
+  texture1 = character(),
+  texture2 = character(),
+  semantic_distance = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Create an empty list to collect results
+results_list <- vector("list", length = length(concept_pairs) * length(texture_pairs))
+counter <- 1  # index for results_list
+
+# Loop through each concept pair
+for (pair in concept_pairs){
+  # Loop through each combination of two textures
+  for (textures in texture_pairs) {
+    texture1 <- as.character(textures[[1]])
+    texture2 <- as.character(textures[[2]])
+
+    if (texture1 != texture2) {
+      concept1_texture1_rating <- as.numeric(assoc[assoc$concept == pair[1], texture1])
+      concept1_texture2_rating <- as.numeric(assoc[assoc$concept == pair[1], texture2])
+      concept2_texture1_rating <- as.numeric(assoc[assoc$concept == pair[2], texture1])
+      concept2_texture2_rating <- as.numeric(assoc[assoc$concept == pair[2], texture2])
+
+      if (all(!is.na(c(concept1_texture1_rating, concept2_texture2_rating, 
+                       concept2_texture1_rating, concept1_texture2_rating)))) {
+
+        result <- get_semantic_distance(
+                      c(concept1_texture1_rating, concept1_texture2_rating),
+                      c(concept2_texture1_rating, concept2_texture2_rating)
+        )
+
+        # Store result as a list element
+        results_list[[counter]] <- data.frame(
+          concept1 = pair[1],
+          concept2 = pair[2],
+          texture1 = texture1,
+          texture2 = texture2,
+          semantic_distance = result$semantic_distance,
+          stringsAsFactors = FALSE
+        )
+        counter <- counter + 1
+      }
+    }
+  }
+}
+
+# Combine all results into a single data frame
+semantic_distances_df <- do.call(rbind, results_list[1:(counter - 1)])
+
+# Add identifier column with all the info
+semantic_distances_df <- semantic_distances_df %>%
+  mutate(identifier = paste(concept1, concept2, texture1, texture2, sep = "_"))
+
+#add group name column
+# semantic_distances_fruits_df <- semantic_distances_fruits_df %>% 
+#   mutate(
+#     group = "fruits"
+#   )
+
+##############
+
+#max capacity for semantic discriminability for each concept pair
+semantic_distances_df <- semantic_distances_df %>% 
+  group_by(concept1, concept2) %>% 
+  mutate(
+    max_capacity = max(semantic_distance, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+
+#mean entropy
+
+#add entropy values for each concept to df
+
+#join to get entropy for concept_1
+semantic_distances_df <- semantic_distances_df %>%
+  left_join(entropies_df, by = c("concept1" = "concept")) %>%
+  rename(entropy_c1 = entropy)
+
+#join to get entropy for concept_2
+semantic_distances_df <- semantic_distances_df %>%
+  left_join(entropies_df, by = c("concept2" = "concept")) %>%
+  rename(entropy_c2 = entropy)
+
+#mean specificity
+semantic_distances_df <- semantic_distances_df %>% 
+  rowwise() %>% 
+  mutate(
+    mean_entropy = mean(c(entropy_c1, entropy_c2), na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+#TV
+
+#calc TV for every combination of concept pairs
+#use normalized associations stored in p_mat - subset
+# fruits_p_mat <- p_mat %>% 
+#   filter(concept %in% c("blueberry", "lemon", "mango", "strawberry", "watermelon", "apple", "banana", "cherry", "grape", "peach"))
+
+#calc TV
+
+# Convert and reassign row names
+p_mat_fixed <- as.matrix(p_mat[, -1])
+rownames(p_mat_fixed) <- p_mat$concept
+
+#place to store TVs
+tv_results <- list()
+
+# Loop through concept pairs
+for (pair in concept_pairs) {
+  concept1 <- pair[1]
+  concept2 <- pair[2]
+  
+  # Get the rows from the matrix
+  p_j1 <- p_mat_fixed[concept1, ]
+  p_j2 <- p_mat_fixed[concept2, ]
+  
+  # Compute total variation
+  tv <- total_variation(p_j1, p_j2)
+  
+  # Store the result as a list
+  tv_results[[length(tv_results) + 1]] <- data.frame(
+    concept1 = concept1,
+    concept2 = concept2,
+    TV = tv
+  )
+}
+
+#combine into a data frame
+tv_df <- do.call(rbind, tv_results)
+
+
+#add column of normalized TV within fruits if want for seperate model
+#fruits_tv_df$group_nTV <- fruits_tv_df$TV / sum(fruits_tv_df$TV)
+
+tv_df$nTV <- (tv_df$TV - min(tv_df$TV)) / (max(tv_df$TV) - min(tv_df$TV))
+
+#add TVs to main data frame
+semantic_distances_df <- semantic_distances_df %>%
+  left_join(tv_df, by = c("concept1", "concept2"))
+
+
+#normalize entropy across pairs
+#semantic_distances_fruits_df$group_n_mean_entropy <-  semantic_distances_fruits_df$mean_entropy/sum(semantic_distances_fruits_df$mean_entropy)
+
+#subtract from 1 for specificity (so larger values are higher specificity)
+#semantic_distances_fruits_df$group_specificity <- 1 - semantic_distances_fruits_df$group_n_mean_entropy
+
+#add concept pair identifiers
+semantic_distances_df$concept_pair <- paste(semantic_distances_df$concept1, semantic_distances_df$concept2, sep = "_")
+
+```
+
+## Combine Perceptual distances with Semantic Distances
+
+```{r}
+#add perceptual distances to each semantic distance df
+semantic_distances_df <- merge(semantic_distances_df, percept_distances_df, by = c("texture1", "texture2"), all.x = FALSE, all.y = TRUE)
+
+```
+
+```{r}
+#normalize mean entropy to it ranges from 0 to 1
+semantic_distances_df$n_mean_entropy <- (semantic_distances_df$mean_entropy - min(semantic_distances_df$mean_entropy)) / (max(semantic_distances_df$mean_entropy) - min(semantic_distances_df$mean_entropy)) 
+```
+
+```{r}
+#subtract from 1 for specificity (so larger values are higher specificity)
+semantic_distances_df$specificity <- 1 - semantic_distances_df$n_mean_entropy
+```
+
+```{r}
+#save semantic distance data frames as separate csv's
+
+write.csv(semantic_distances_df, "../results/SemanticDistances_all.csv", row.names = FALSE)
+
+```

@@ -1,0 +1,1339 @@
+---
+title: "VTBestRanges"
+author: "Anna Chinni"
+format: pdf
+editor: visual
+---
+
+#Setup
+
+```{r}
+#rm(list = ls())
+
+# List of packages
+packages <- c("corrr", "ggplot2", "lme4", "lmerTest", "FactoMineR", "grid","png","cowplot","magick", "purrr", "combinat", "ggimage","dplyr","tidyverse","knitr", "readxl", "writexl", "tidytext", "forcats", "ggrepel", "stringr", "jsonlite")
+```
+
+```{r}
+
+install_and_load_packages <- function(packages) {
+  for(package in packages) {
+    if(!require(package, character.only = TRUE)) {
+      install.packages(package, dependencies = TRUE)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+# Call the function with the list of packages
+install_and_load_packages(packages)
+
+```
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+```
+
+# Load in data
+
+```{r}
+data <- read_csv("../results/SemanticDistances_all.csv")
+assoc <- read_csv("../data/tactile_associations_wide.csv")
+```
+
+
+# Select pairs that make sense given concept groups
+
+Concepts groups
+
+0 = clothes = c("dress", "pants", "shirt", "socks", "shoes")
+
+1 = fruit1 = c("blueberry", "lemon", "mango", "strawberry", "watermelon")
+
+2 = scenes = c("beach", "field", "ocean", "sky", "sunset")
+
+3 = emotions = c("angry", "disgust", "fearful", "happy", "sad")
+
+4 = locations = c("above", "below", "beside", "near", "far")
+
+5 = times = c("dawn", "day", "dusk", "night", "noon")
+
+6 = animals = c("bear", "bird", "lion", "frog", "fish")
+
+7 = transit = c("airplane", "car", "boat", "truck", "train")
+
+8 = fruit2 = c("apple", "banana", "cherry", "grape", "peach")
+
+9 = vegetables = c("carrot", "celery", "corn", "eggplant", "mushroom")
+
+10 = weather = c("blizzard", "drought", "hurricane", "lightning", "sandstorm")
+
+11 = value = c("evil", "greed", "justice", "love", "peace")
+
+12 = activity = c("driving", "eating", "sleeping", "leisure", "working")
+
+13 = qualities = c("comfort", "efficiency", "speed", "safety", "reliability")
+
+```{r}
+clothes <- c("dress", "pants", "shirt", "socks", "shoes")
+fruits <- c("blueberry", "lemon", "mango", "strawberry", "watermelon", "apple", "banana", "cherry", "grape", "peach")
+scenes <- c("beach", "field", "ocean", "sky", "sunset")
+emotions <- c("angry", "disgust", "fearful", "happy", "sad")
+locations <- c("above", "below", "beside", "near", "far")
+times <- c("dawn", "day", "dusk", "night", "noon")
+animals <- c("bear", "bird", "lion", "frog", "fish")
+transit <- c("airplane", "car", "boat", "truck", "train")
+vegetables <- c("carrot", "celery", "corn", "eggplant", "mushroom")
+weather <- c("blizzard", "drought", "hurricane", "lightning", "sandstorm")
+values <- c("evil", "greed", "justice", "love", "peace")
+activity <- c("driving", "eating", "sleeping", "leisure", "working")
+qualities <- c("comfort", "efficiency", "speed", "safety", "reliability")
+fruits_veggies <- c("blueberry", "lemon", "mango", "strawberry", "watermelon", "apple", "banana", "cherry", "grape", "peach", "carrot", "celery", "corn", "eggplant", "mushroom")
+```
+
+
+## Pairs
+
+```{r}
+#clothes
+clothes <- combn(clothes, 2)
+clothes <- as.data.frame(t(clothes))
+colnames(clothes) <- c("concept1", "concept2")
+clothes <- clothes %>% 
+  mutate(
+    category = "clothes"
+  )
+
+#fruits
+fruits <- combn(clothes, 2)
+fruits <- as.data.frame(t(fruits))
+colnames(fruits) <- c("concept1", "concept2")
+fruits <- fruits %>% 
+  mutate(
+    category = "fruits"
+  )
+
+#scenes
+scenes <- combn(scenes, 2)
+scenes <- as.data.frame(t(scenes))
+colnames(scenes) <- c("concept1", "concept2")
+scenes <- scenes %>% 
+  mutate(
+    category = "scenes"
+  )
+
+#emotions
+emotions <- combn(emotions, 2)
+emotions <- as.data.frame(t(emotions))
+colnames(emotions) <- c("concept1", "concept2")
+emotions <- emotions %>% 
+  mutate(
+    category = "emotions"
+  )
+
+#locations
+locations <- combn(locations, 2)
+locations <- as.data.frame(t(locations))
+colnames(locations) <- c("concept1", "concept2")
+locations <- locations %>% 
+  mutate(
+    category = "locations"
+  )
+
+#times
+times <- combn(times, 2)
+times <- as.data.frame(t(times))
+colnames(times) <- c("concept1", "concept2")
+times <- times %>% 
+  mutate(
+    category = "times"
+  )
+
+#animals
+animals <- combn(animals, 2)
+animals <- as.data.frame(t(animals))
+colnames(animals) <- c("concept1", "concept2")
+animals <- animals %>% 
+  mutate(
+    category = "animals"
+  )
+
+#transit
+transit <- combn(transit, 2)
+transit <- as.data.frame(t(transit))
+colnames(transit) <- c("concept1", "concept2")
+transit <- transit %>% 
+  mutate(
+    category = "transit"
+  )
+
+#vegetables
+vegetables <- combn(vegetables, 2)
+vegetables <- as.data.frame(t(vegetables))
+colnames(vegetables) <- c("concept1", "concept2")
+vegetables <- vegetables %>% 
+  mutate(
+    category = "vegetables"
+  )
+
+#weather
+weather <- combn(weather, 2)
+weather <- as.data.frame(t(weather))
+colnames(weather) <- c("concept1", "concept2")
+weather <- weather %>% 
+  mutate(
+    category = "weather"
+  )
+
+#values
+values <- combn(values, 2)
+values <- as.data.frame(t(values))
+colnames(values) <- c("concept1", "concept2")
+values <- values %>% 
+  mutate(
+    category = "values"
+  )
+
+#activity
+activity <- combn(activity, 2)
+activity <- as.data.frame(t(activity))
+colnames(activity) <- c("concept1", "concept2")
+activity <- activity %>% 
+  mutate(
+    category = "activity"
+  )
+
+#qualities
+qualities <- combn(qualities, 2)
+qualities <- as.data.frame(t(qualities))
+colnames(qualities) <- c("concept1", "concept2")
+qualities <- qualities %>% 
+  mutate(
+    category = "qualities"
+  )
+
+#fruits and veggies
+fruits_veggies <- combn(fruits_veggies, 2)
+fruits_veggies <- as.data.frame(t(fruits_veggies))
+colnames(fruits_veggies) <- c("concept1", "concept2")
+fruits_veggies <- fruits_veggies %>% 
+  mutate(
+    category = "fruits_veggies"
+  )
+
+```
+
+```{r}
+#combine
+pairs <- bind_rows(clothes, fruits, scenes, emotions, locations, times, animals, transit, vegetables, weather, values, activity, qualities)
+
+#fruits and veggies combined
+#pairs <- bind_rows(clothes, fruits_veggies, scenes, emotions, locations, times, animals, transit, weather, values, activity, qualities)
+```
+
+```{r}
+#add concept_pair key sorted alphabetically to match with data 
+pairs <- pairs %>%
+  mutate(
+    concept_pair = if_else(concept1 < concept2,
+                       paste(concept1, concept2, sep = "_"),
+                       paste(concept2, concept1, sep = "_"))
+  )
+```
+
+## Filter semantic distances to only have the within concept group pairs
+
+```{r}
+data <- data %>%
+  semi_join(pairs, by = "concept_pair")
+```
+
+# Look at ranges for semantic distance
+
+Only concept pairs with a max SemDist above .8 and a min below .2
+
+```{r}
+data <- data %>% 
+  group_by(concept1, concept2) %>% 
+  mutate(
+    min_semd = min(semantic_distance)
+  )
+```
+
+```{r}
+data <- data %>% 
+  filter(min_semd < .2)
+
+data <- data %>% 
+  filter(max_capacity > .65)
+```
+
+```{r}
+data <- data %>%
+  group_by(concept1, concept2) %>%
+  mutate(range_semantic_distance = max(semantic_distance) - min(semantic_distance)) %>%
+  ungroup()
+```
+
+```{r}
+data <- data %>% 
+  filter(range_semantic_distance >= .65)
+```
+
+```{r}
+pair_ranges <- data %>%
+  group_by(concept1, concept2) %>%
+  summarise(
+    range_semantic_distance = max(semantic_distance, na.rm = TRUE) -
+                              min(semantic_distance, na.rm = TRUE),
+    min_semd = min(semantic_distance),
+    max_semd = max(semantic_distance),
+    .groups = "drop"
+  )
+```
+
+```{r}
+unique_pairs <- data %>%
+  distinct(concept1, concept2)
+
+unique_pairs
+```
+
+```{r}
+#write csv
+#write_csv(data, "MC_results/best_ranges.csv")
+```
+
+## Find set of 6 textures that work
+
+```{r}
+# function to get MSE vs ideal uniform
+get_mse <- function(distances) {
+  ideal <- seq(0, 1, length.out = length(distances))
+  mean((sort(distances) - ideal)^2)
+}
+```
+
+```{r}
+evaluate_set <- function(textures, df, min_range = .7, max_mse = .01) {
+  sample_textures <- sample(textures, 6)
+  pairs <- t(combn(sample_textures, 2)) |> as.data.frame()
+  colnames(pairs) <- c("texture1", "texture2")
+  
+  #nake sure texture pairs match whats in sem dist data 
+  joined <- pairs %>%
+    left_join(df, by = c("texture1", "texture2")) %>%
+    bind_rows(
+      pairs %>%
+        left_join(df, by = c("texture2" = "texture1", "texture1" = "texture2"))
+    ) %>%
+    filter(!is.na(semantic_distance)) %>%
+    distinct(texture1, texture2, .keep_all = TRUE)
+  
+  if (nrow(joined) < 15) return(NULL)
+  
+  mse <- get_mse(joined$semantic_distance)
+  range_val <- diff(range(joined$semantic_distance))
+  
+  #constraints
+  if (range_val < min_range || mse > max_mse) return(NULL)
+  
+  list(set = sample_textures, mse = mse, range = range_val)
+}
+
+```
+
+```{r}
+find_best_set <- function(df, concept1, concept2, min_range = .7, max_mse = .01, n_tries = 5000) {
+  subset_df <- df %>%
+    filter(concept1 == !!concept1, concept2 == !!concept2)
+  
+  textures <- unique(c(subset_df$texture1, subset_df$texture2))
+  best <- NULL
+  
+  for (i in seq_len(n_tries)) {
+    res <- evaluate_set(textures, subset_df, min_range = min_range, max_mse = max_mse)
+    
+    if (!is.null(res)) {
+      if (is.null(best) || res$mse < best$mse) best <- res
+      #if (res$mse < threshold) break
+    }
+  }
+  
+  if (is.null(best)) return(NULL)
+  tibble(
+    concept1 = concept1,
+    concept2 = concept2,
+    textures = paste(best$set, collapse = ", "),
+    mse = best$mse,
+    range = best$range
+  )
+}
+
+```
+
+```{r}
+#texture list
+textures <- unique(c(data$texture1, data$texture2))
+```
+
+```{r}
+#ideal set
+ideal <- data.frame(
+  rank = 1:15,
+  semantic_distance = seq(0, 1, length.out = 15)
+)
+```
+
+#Pairs
+
+##Concrete 
+
+Frog - Lion
+
+Corn - Eggplant
+
+
+##Abstract 
+
+Evil - Peace
+
+Comfort - Speed
+
+
+# Frog Lion
+
+```{r}
+#select concept pair
+frog_lion <- data %>%
+  filter(
+    (concept1 == "frog" & concept2 == "lion") |
+    (concept1 == "lion" & concept2 == "frog")
+  )
+```
+
+```{r}
+frog_lion_results <- map_dfr(
+  seq_len(nrow(frog_lion)),
+  \(i) {
+    row <- frog_lion[i, ]
+    find_best_set(frog_lion, row$concept1, row$concept2, min_range = 0.71, max_mse = 0.02, n_tries = 2000)
+  }
+)
+```
+
+```{r}
+#write csv
+write_csv(frog_lion_results, "../results/frog_lion_results.csv")
+```
+
+```{r}
+frog_lion_results <- read_csv("../results/frog_lion_results.csv")
+```
+
+```{r}
+frog_lion_best <- frog_lion_results %>% 
+  filter(range == max(range)) %>% 
+  slice_min(order_by = mse, n = 1)
+```
+
+```{r}
+ggplot(frog_lion_results, aes(x = range, y = mse, label = paste(concept1, concept2))) +
+  geom_point(size = 3, color = "steelblue") +
+  #geom_text(vjust = -0.5, size = 3) +
+    geom_point(
+    data = frog_lion_best,
+    aes(x = range, y = mse),
+    color = "red",
+    size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_y_continuous(limits=c(.0001, .008), expand = c(0,0)) +
+  scale_x_continuous(limits=c(.5, 1), expand = c(0,0)) +
+  labs(
+    x = "Range of semantic distances (max - min)",
+    y = "MSE vs. ideal uniform distribution",
+    title = "Uniformity of semantic distances across 8-texture sets"
+  )+
+   theme(
+    text = element_text(color = "black", size = 24),
+    panel.background = element_blank(),       # Remove panel background
+    plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    panel.grid.minor = element_blank(),       # Remove minor grid lines
+    axis.line = element_line(color = "black") # Add axis lines
+  ) 
+```
+
+```{r}
+# Extract best textures
+frog_lion_best_textures <- strsplit(frog_lion_best$textures, ",\\s*")[[1]]
+
+# Subset your main data for those textures and concept pair
+frog_lion_best_pairs <- frog_lion %>%
+  filter(concept1 == frog_lion_best$concept1,
+         concept2 == frog_lion_best$concept2,
+         texture1 %in% frog_lion_best_textures,
+         texture2 %in% frog_lion_best_textures) %>%
+  distinct(texture1, texture2, .keep_all = TRUE)
+```
+
+```{r}
+frog_lion_best_textures
+```
+
+```{r}
+ggplot() +
+  #geom_hline(yintercept = 0, color = "black") +
+  # semdist points
+  geom_point(
+    data = frog_lion_best_pairs,
+    aes(x = semantic_distance, y = .00005),
+    size = 4,
+    alpha = 0.6,
+    color = "steelblue"
+  ) +
+  
+  # ideal vertical dashes
+  geom_point(
+    data = ideal,
+    aes(x = semantic_distance, y = .00005),
+    shape = 124,   # vertical line shape in ggplot
+    size = 6,      # controls dash length
+    color = "black"
+  ) +
+  geom_text(
+  data = ideal,
+  aes(
+    x = semantic_distance,
+    y = 0,
+    label = round(semantic_distance, 2)
+  ),
+  vjust = 1.8,        # pushes text below the line
+  size = 6,
+  color = "black"
+) + 
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, .005), expand = c(0,0)) +
+  theme_minimal() +
+  labs(
+    x = "",
+    y = "",
+    title = "Semantic Distance (0–1)"
+  ) +
+  theme(
+    text = element_text(color = "black", size = 24),
+    #panel.background = element_blank(),       # Remove panel background
+    #plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    #panel.grid.minor = element_blank(),       # Remove minor grid lines
+    # remove y axis entirely
+  axis.title.y = element_blank(),
+  axis.text.y  = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y  = element_blank(),
+  
+  # remove x axis label (keep ticks if you want)
+  axis.title.x = element_blank(),
+  axis.text.x = element_blank(),
+  axis.line.x = element_line(color = "black"),
+  
+  # background cleanup
+  panel.background = element_blank(),
+  plot.background  = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank()
+    
+    #axis.line = element_line(color = "black") # Add axis lines
+  ) +
+  coord_cartesian(clip = "off")
+
+```
+
+# Corn Eggplant
+
+```{r}
+#select concept pair
+corn_eggplant <- data %>%
+  filter(
+    (concept1 == "corn" & concept2 == "eggplant") |
+    (concept1 == "eggplant" & concept2 == "corn")
+  )
+```
+
+```{r}
+corn_eggplant_results <- map_dfr(
+  seq_len(nrow(corn_eggplant)),
+  \(i) {
+    row <- corn_eggplant[i, ]
+    find_best_set(corn_eggplant, row$concept1, row$concept2, min_range = 0.71, max_mse = 0.02, n_tries = 2000)
+  }
+)
+```
+
+```{r}
+#write csv
+write_csv(corn_eggplant_results, "../results/corn_eggplant_results.csv")
+```
+
+```{r}
+corn_eggplant_results <- read_csv("../results/corn_eggplant_results.csv")
+```
+
+```{r}
+corn_eggplant_best <- corn_eggplant_results %>% 
+  filter(range == max(range)) %>% 
+  slice_min(order_by = mse, n = 1)
+```
+
+```{r}
+ggplot(corn_eggplant_results, aes(x = range, y = mse, label = paste(concept1, concept2))) +
+  geom_point(size = 3, color = "steelblue") +
+  #geom_text(vjust = -0.5, size = 3) +
+  geom_point(
+    data = corn_eggplant_best,
+    aes(x = range, y = mse),
+    color = "red",
+    size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_y_continuous(limits=c(.0001, .015), expand = c(0,0)) +
+  scale_x_continuous(limits=c(.6, 1), expand = c(0,0)) +
+  labs(
+    x = "Range of semantic distances (max - min)",
+    y = "MSE vs. ideal uniform distribution",
+    title = "Uniformity of semantic distances across 8-texture sets"
+  ) +
+   theme(
+    text = element_text(color = "black", size = 24),
+    panel.background = element_blank(),       # Remove panel background
+    plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    panel.grid.minor = element_blank(),       # Remove minor grid lines
+    axis.line = element_line(color = "black") # Add axis lines
+  ) 
+```
+
+```{r}
+# Extract best textures
+corn_eggplant_best_textures <- strsplit(corn_eggplant_best$textures, ",\\s*")[[1]]
+
+# Subset your main data for those textures and concept pair
+corn_eggplant_best_pairs <- corn_eggplant %>%
+  filter(concept1 == corn_eggplant_best$concept1,
+         concept2 == corn_eggplant_best$concept2,
+         texture1 %in% corn_eggplant_best_textures,
+         texture2 %in% corn_eggplant_best_textures) %>%
+  distinct(texture1, texture2, .keep_all = TRUE)
+```
+
+```{r}
+corn_eggplant_best_textures
+```
+
+```{r}
+p_corn_eggplant_dist <- ggplot() +
+  #geom_hline(yintercept = 0, color = "black") +
+  # semdist points
+  geom_point(
+    data = corn_eggplant_best_pairs,
+    aes(x = semantic_distance, y = .000075),
+    size = .7,
+    alpha = 0.6,
+    color = "#1BA0C2"
+  ) +
+  
+  # ideal vertical dashes
+  geom_point(
+    data = ideal,
+    aes(x = semantic_distance, y = .000045),
+    shape = 124,   # vertical line shape in ggplot
+    size = 1,      # controls dash length
+    color = "black"
+  ) +
+#   geom_text(
+#   data = ideal,
+#   aes(
+#     x = semantic_distance,
+#     y = 0,
+#     label = round(semantic_distance, 2)
+#   ),
+#   vjust = 1.8,        # pushes text below the line
+#   size = 6,
+#   color = "black"
+# ) + 
+  geom_text(
+  data = data.frame(x = c(0, 1), y = 0),
+  aes(x = x, y = y, label = x),
+  vjust = 1.8,
+  size = 6,
+  color = "black"
+) +
+  geom_text(
+  data = data.frame(x = 0.5, y = 0),
+  aes(x = x, y = y),
+  label = "Semantic Discriminability",
+  vjust = 3,   # push further below axis
+  size = 6,
+  color = "black"
+)+
+  scale_x_continuous(limits = c(0, 1), expand = c(0,0), breaks = seq(0, 1, by = 0.2)) +
+  scale_y_continuous(limits = c(0, .005), expand = c(0,0)) +
+  theme_minimal() +
+  labs(
+    x = "",
+    y = "",
+    title = "Semantic Distance (0–1)"
+  ) +
+  theme(
+    plot.margin = margin(l = 20, r = 20, b=50),
+    text = element_text(color = "black", size = 14),
+    #panel.background = element_blank(),       # Remove panel background
+    #plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    #panel.grid.minor = element_blank(),       # Remove minor grid lines
+    # remove y axis entirely
+  axis.title.y = element_blank(),
+  axis.text.y  = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y  = element_blank(),
+  
+  # remove x axis label (keep ticks if you want)
+  axis.title.x = element_blank(),
+  axis.text.x = element_blank(),
+  axis.line.x = element_line(color = "black", linewidth = 0.2),
+  
+  # background cleanup
+  panel.background = element_blank(),
+  plot.background  = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank()
+    
+    #axis.line = element_line(color = "black") # Add axis lines
+  ) +
+  coord_cartesian(clip = "off")
+
+p_corn_eggplant_dist
+```
+
+```{r}
+ggsave(plot = p_corn_eggplant_dist,
+       filename = "plots/p_corn_eggplant_dist.pdf",
+       width = 2,
+       height = 1,
+       units = "in")
+```
+
+# Evil Peace
+
+```{r}
+#select concept pair
+evil_peace <- data %>%
+  filter(
+    (concept1 == "evil" & concept2 == "peace") |
+    (concept1 == "peace" & concept2 == "evil")
+  )
+```
+
+```{r}
+evil_peace_results <- map_dfr(
+  seq_len(nrow(evil_peace)),
+  \(i) {
+    row <- evil_peace[i, ]
+    find_best_set(evil_peace, row$concept1, row$concept2, min_range = 0.71, max_mse = 0.02, n_tries = 2000)
+  }
+)
+```
+
+```{r}
+#write csv
+write_csv(evil_peace_results, "../results/evil_peace_results.csv")
+```
+
+```{r}
+evil_peace_results <- read_csv("../results/evil_peace_results.csv")
+```
+
+```{r}
+evil_peace_best <- evil_peace_results %>% 
+  filter(range == max(range))%>% 
+  slice_min(order_by = mse, n = 1)
+```
+
+```{r}
+ggplot(evil_peace_results, aes(x = range, y = mse, label = paste(concept1, concept2))) +
+  geom_point(size = 3, color = "steelblue") +
+  #geom_text(vjust = -0.5, size = 3) +
+    geom_point(
+    data = evil_peace_best,
+    aes(x = range, y = mse),
+    color = "red",
+    size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_y_continuous(limits=c(.0001, .015), expand = c(0,0)) +
+  scale_x_continuous(limits=c(.6, 1), expand = c(0,0)) +
+  labs(
+    x = "Range of semantic distances (max - min)",
+    y = "MSE vs. ideal uniform distribution",
+    title = "Uniformity of semantic distances across 8-texture sets"
+  )+
+   theme(
+    text = element_text(color = "black", size = 24),
+    panel.background = element_blank(),       # Remove panel background
+    plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    panel.grid.minor = element_blank(),       # Remove minor grid lines
+    axis.line = element_line(color = "black") # Add axis lines
+  ) 
+```
+
+```{r}
+# Extract best textures
+evil_peace_best_textures <- strsplit(evil_peace_best$textures, ",\\s*")[[1]]
+
+# Subset your main data for those textures and concept pair
+evil_peace_best_pairs <- evil_peace %>%
+  filter(concept1 == evil_peace_best$concept1,
+         concept2 == evil_peace_best$concept2,
+         texture1 %in% evil_peace_best_textures,
+         texture2 %in% evil_peace_best_textures) %>%
+  distinct(texture1, texture2, .keep_all = TRUE)
+```
+
+```{r}
+evil_peace_best_textures
+```
+
+```{r}
+ggplot() +
+  #geom_hline(yintercept = 0, color = "black") +
+  # semdist points
+  geom_point(
+    data = evil_peace_best_pairs,
+    aes(x = semantic_distance, y = .00005),
+    size = 4,
+    alpha = 0.6,
+    color = "steelblue"
+  ) +
+  
+  # ideal vertical dashes
+  geom_point(
+    data = ideal,
+    aes(x = semantic_distance, y = .00005),
+    shape = 124,   # vertical line shape in ggplot
+    size = 6,      # controls dash length
+    color = "black"
+  ) +
+  geom_text(
+  data = ideal,
+  aes(
+    x = semantic_distance,
+    y = 0,
+    label = round(semantic_distance, 2)
+  ),
+  vjust = 1.8,        # pushes text below the line
+  size = 6,
+  color = "black"
+) + 
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, .005), expand = c(0,0)) +
+  theme_minimal() +
+  labs(
+    x = "",
+    y = "",
+    title = "Semantic Distance (0–1)"
+  ) +
+  theme(
+    text = element_text(color = "black", size = 24),
+    #panel.background = element_blank(),       # Remove panel background
+    #plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    #panel.grid.minor = element_blank(),       # Remove minor grid lines
+    # remove y axis entirely
+  axis.title.y = element_blank(),
+  axis.text.y  = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y  = element_blank(),
+  
+  # remove x axis label (keep ticks if you want)
+  axis.title.x = element_blank(),
+  axis.text.x = element_blank(),
+  axis.line.x = element_line(color = "black"),
+  
+  # background cleanup
+  panel.background = element_blank(),
+  plot.background  = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank()
+    
+    #axis.line = element_line(color = "black") # Add axis lines
+  ) +
+  coord_cartesian(clip = "off")
+
+```
+
+# Comfort Speed
+
+```{r}
+#select concept pair
+comfort_speed <- data %>%
+  filter(
+    (concept1 == "comfort" & concept2 == "speed") |
+    (concept1 == "speed" & concept2 == "comfort")
+  )
+```
+
+```{r}
+comfort_speed_results <- map_dfr(
+  seq_len(nrow(comfort_speed)),
+  \(i) {
+    row <- comfort_speed[i, ]
+    find_best_set(comfort_speed, row$concept1, row$concept2, min_range = 0.71, max_mse = 0.02, n_tries = 2000)
+  }
+)
+
+```
+
+```{r}
+#write csv
+write_csv(comfort_speed_results, "../results/comfort_speed_results.csv")
+```
+
+```{r}
+comfort_speed_results <- read_csv("../results/comfort_speed_results.csv")
+```
+
+```{r}
+comfort_speed_best <- comfort_speed_results %>% 
+  filter(range == max(range)) %>% 
+  slice_min(order_by = mse, n = 1)
+```
+
+```{r}
+ggplot(comfort_speed_results, aes(x = range, y = mse, label = paste(concept1, concept2))) +
+  geom_point(size = 3, color = "steelblue") +
+  #geom_text(vjust = -0.5, size = 3) +
+  geom_point(
+    data = comfort_speed_best,
+    aes(x = range, y = mse),
+    color = "red",
+    size = 4
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_y_continuous(limits=c(.05, .005), expand = c(0,0)) +
+  scale_x_continuous(limits=c(.65, .96), expand = c(0,0)) +
+  labs(
+    x = "Range of semantic distances (max - min)",
+    y = "MSE vs. ideal uniform distribution",
+    title = "Uniformity of semantic distances across 8-texture sets"
+  )+
+   theme(
+    text = element_text(color = "black", size = 24),
+    panel.background = element_blank(),       # Remove panel background
+    plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    panel.grid.minor = element_blank(),       # Remove minor grid lines
+    axis.line = element_line(color = "black") # Add axis lines
+  ) 
+```
+
+```{r}
+# Extract best textures
+comfort_speed_best_textures <- strsplit(comfort_speed_best$textures, ",\\s*")[[1]]
+
+# Subset your main data for those textures and concept pair
+comfort_speed_best_pairs <- comfort_speed %>%
+  filter(concept1 == comfort_speed_best$concept1,
+         concept2 == comfort_speed_best$concept2,
+         texture1 %in% comfort_speed_best_textures,
+         texture2 %in% comfort_speed_best_textures) %>%
+  distinct(texture1, texture2, .keep_all = TRUE)
+```
+
+```{r}
+comfort_speed_best_textures
+```
+
+```{r}
+ggplot() +
+  #geom_hline(yintercept = 0, color = "black") +
+  # semdist points
+  geom_point(
+    data = comfort_speed_best_pairs,
+    aes(x = semantic_distance, y = .00005),
+    size = 4,
+    alpha = 0.6,
+    color = "steelblue"
+  ) +
+  
+  # ideal vertical dashes
+  geom_point(
+    data = ideal,
+    aes(x = semantic_distance, y = .00005),
+    shape = 124,   # vertical line shape in ggplot
+    size = 6,      # controls dash length
+    color = "black"
+  ) +
+  geom_text(
+  data = ideal,
+  aes(
+    x = semantic_distance,
+    y = 0,
+    label = round(semantic_distance, 2)
+  ),
+  vjust = 1.8,        # pushes text below the line
+  size = 6,
+  color = "black"
+) + 
+  scale_x_continuous(limits = c(0, 1)) +
+  scale_y_continuous(limits = c(0, .005), expand = c(0,0)) +
+  theme_minimal() +
+  labs(
+    x = "",
+    y = "",
+    title = "Semantic Distance (0–1)"
+  ) +
+  theme(
+    text = element_text(color = "black", size = 24),
+    #panel.background = element_blank(),       # Remove panel background
+    #plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    #panel.grid.minor = element_blank(),       # Remove minor grid lines
+    # remove y axis entirely
+  axis.title.y = element_blank(),
+  axis.text.y  = element_blank(),
+  axis.ticks.y = element_blank(),
+  axis.line.y  = element_blank(),
+  
+  # remove x axis label (keep ticks if you want)
+  axis.title.x = element_blank(),
+  axis.text.x = element_blank(),
+  axis.line.x = element_line(color = "black"),
+  
+  # background cleanup
+  panel.background = element_blank(),
+  plot.background  = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.grid.minor = element_blank()
+    
+    #axis.line = element_line(color = "black") # Add axis lines
+  ) +
+  coord_cartesian(clip = "off")
+
+```
+
+
+
+```{r}
+best_sets <- bind_rows(frog_lion_best, corn_eggplant_best, evil_peace_best, comfort_speed_best)
+```
+
+```{r}
+#write csv
+write_csv(best_sets, "../results/exp2_sets.csv")
+```
+
+```{r}
+best_sets <- read_csv("../results/exp2_sets.csv")
+```
+
+```{r}
+ggplot(best_sets, aes(x = range, y = mse, label = paste(concept1, concept2))) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_text(
+    aes(label = paste(concept1, concept2)),
+    vjust = -0.8,
+    size = 6
+  ) +
+  #geom_text(vjust = -0.5, size = 3) +
+  theme_minimal(base_size = 14) +
+  scale_y_continuous(limits=c(0, .05), expand = c(0,0)) +
+  scale_x_continuous(limits=c(.65, 1), expand = c(0,0)) +
+  labs(
+    x = "Range of semantic distances",
+    y = "MSE from ideal uniform distribution",
+    title = "Uniformity of semantic distances across 8-texture sets"
+  )+
+   theme(
+    text = element_text(color = "black", size = 24),
+    panel.background = element_blank(),       # Remove panel background
+    plot.background = element_blank(),        # Remove overall plot background
+    #panel.grid.major = element_blank(),       # Remove major grid lines
+    panel.grid.minor = element_blank(),       # Remove minor grid lines
+    axis.line = element_line(color = "black") # Add axis lines
+  ) 
+```
+
+# Look at Associations
+
+```{r}
+#separate textures in to distinct columns
+best_sets_assoc <- best_sets %>%
+  separate(
+    textures,
+    into = paste0("texture", 1:6),
+    sep = ",\\s*"
+  )%>% 
+  pivot_longer(
+    cols = starts_with("texture"),
+    names_to = "texture_pos",
+    values_to = "texture"
+  )
+```
+
+```{r}
+assoc_long <- assoc %>%
+  pivot_longer(
+    cols = -concept,
+    names_to = "texture",
+    values_to = "association"
+  )
+```
+
+```{r}
+best_sets_assoc <- best_sets_assoc %>%
+  mutate(pair = interaction(concept1, concept2, sep = "_")) %>%
+    pivot_longer(
+    cols = c(concept1, concept2),
+    names_to = "concept_role",
+    values_to = "concept"
+  ) %>%
+  left_join(
+    assoc_long,
+    by = c("concept", "texture")
+  )
+
+best_sets_assoc$texture <- as_factor(best_sets_assoc$texture)
+```
+
+```{r}
+concept1_assoc <- best_sets_assoc %>%
+  filter(concept_role == "concept1") %>%
+  select(pair, texture, association) %>%
+  rename(concept1_assoc = association)
+```
+
+```{r}
+best_sets_assoc  <- best_sets_assoc %>%
+  left_join(concept1_assoc, by = c("pair", "texture"))
+```
+
+Add image paths
+
+```{r}
+# best_sets_assoc <- best_sets_assoc %>%
+#   group_by(pair) %>%
+#   arrange(concept1_assoc, .by_group = TRUE) %>%
+#   mutate(
+#     texture = reorder_within(texture, -concept1_assoc, pair),
+#     texture_for_image = texture  # <- this keeps the ordering for plotting
+#   ) %>%
+#   ungroup() %>%
+#   mutate(
+#     texture_id = sub("___.*$", "", texture_for_image),  # for filenames only
+#     image_path = paste0("/Users/annachinni/Dropbox/TextureSemantics/VisualSemanticDist/NBT_53_bars/",
+#                         texture_id, ".png"),
+#     image_y = 0
+#   )
+```
+
+```{r}
+best_sets_assoc <- best_sets_assoc %>%
+  group_by(pair) %>%
+  arrange(concept1_assoc, .by_group = TRUE) %>%
+  mutate(
+    texture = reorder_within(
+      texture,
+      -concept1_assoc,
+      pair
+    )
+  ) %>%
+  ungroup()
+```
+
+```{r}
+all_pairs <- unique(best_sets_assoc$pair)
+```
+
+```{r}
+plots <- list()
+
+for (p in all_pairs) {
+
+  df_pair <- best_sets_assoc %>% 
+    filter(pair == p) %>%
+    group_by(concept_role) %>%
+    mutate(
+      texture = fct_reorder(texture, association, .desc = TRUE),
+      #texture_for_image = texture,   
+      #image_y = -0.1                    # images sit on baseline
+    ) %>%
+    ungroup()
+    #mutate(
+      #label_y = -0.235  # <- position for the x-axis labels
+    #)
+
+  plt <- ggplot(df_pair, aes(x = texture, y = association)) +
+    ## ---- IMAGES ----
+    # geom_image(
+    #   aes(x = texture_for_image, y = image_y, image = image_path),
+    #   size = 0.08,
+    #   by = "width"
+    # ) +
+    # geom_text(
+    #   aes(x = texture, y = label_y, label = sub("___.*$", "", texture)),
+    #   inherit.aes = FALSE,
+    #   angle = 0,
+    #   hjust = 1,
+    #   size = 5,
+    #   color = NA
+    # ) +
+    geom_col(width = 0.6, fill = "steelblue") +
+    #geom_hline(yintercept = 0, color = "black", linewidth = 0.6) +
+    # geom_segment(aes(x = 0.1, xend = 0.1, y = 0, yend = 1), 
+    #            color = "black", linewidth = 0.6) +
+    facet_grid(~concept, scales = "free_x") +
+    scale_x_discrete(
+      labels = function(x) sub("___.*$", "", x),
+      expand = c(.1, 0)
+    ) +
+    scale_y_continuous(expand = c(0, 0), limits = c(0, 1)) +
+    coord_cartesian(clip = "off") +
+    labs(
+      x = "Texture",
+      y = "Association strength",
+      title = paste("Pair:", p)
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+      plot.margin = margin(t = 10, r = 20, b = 100, l = 20),
+      axis.text.x = element_text(color = "black", size = 14, margin = margin(t = 40)),
+      axis.text.y = element_text(color = "black", size = 14),
+      axis.title = element_text(color = "black", size = 16, face = "bold"),
+      strip.text = element_text(color = "black", size = 14, face = "bold"),
+      plot.title = element_text(color = "black", size = 18, face = "bold"),
+      panel.spacing = unit(2, "lines"),
+      axis.line = element_line(color = "black"),
+      axis.ticks = element_line(color = "black"),
+      panel.grid = element_blank(),
+      axis.ticks.x = element_blank(),
+      legend.position = "none",
+      #axis.line.x = element_line(color = NA),
+      #axis.line.y = element_line(color = NA)
+    )
+
+  plots[[p]] <- plt
+}
+```
+
+```{r}
+plots[["comfort_speed"]]
+```
+
+```{r}
+# Make sure you have a directory to save the plots
+output_dir <- "/Users/annachinni/Dropbox/TextureSemantics/VisualSemanticDist/Plots/"
+if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
+
+# Loop over your plots list and save each
+for (p in names(plots)) {
+  # Construct the filename
+  file_name <- paste0(output_dir, p, "_assoc.pdf")
+  
+  # Save the plot
+  ggsave(
+    filename = file_name,
+    plot = plots[[p]],
+    width = 12,       # adjust as needed
+    height = 6,       # adjust as needed
+    dpi = 300
+  )
+}
+
+```
+
+#checking semantic distances
+
+```{r}
+bernoulli <- function(x){
+  x * (1 - x)
+}
+```
+
+```{r}
+v <- seq(0, 1, length.out = 500)
+
+plot(v, bernoulli(v), type = "l")
+```
+
+```{r}
+sig <- function(xi) {
+  pmax(1.4 * xi * (1 - xi), 0.1)  # pmax works element-wise
+}
+```
+
+```{r}
+plot(v, sig(v), type = "l")
+```
+
+```{r}
+sig(.6)
+```
+
+sig is stand in for standard deviaion, bernoulli as approach 0 or 1 probability becomes more certain, so smaller sd/measure of noise in the center there is the most uncertainty its the noisiest.
+
+then we are summing the associations (x1 + x4) - (x2 + x3) (essentially) so we need a variance sum
+
+then calc variance from the individual standard deviations which is just sd\^2
+
+you can sum variance normally
+
+then we convert back to a standard deviation by square rooting our sum
+
+this is a combined standard deviation for the combined association measures
+
+then divide associaiton (signal) by sd (noise, same units as signal)
+
+ratio of signal or measure to the noise -\> bigger value (difference, due to small noise) higher certainty, and vice versa
+
+we then turn it into a probability like measure
+
+```{r}
+get_semantic_distance <- function(concept1, concept2) {
+  # Helper function for calculating the standard deviation
+  sig <- function(xi) {
+    return(max(1.4 * xi * (1 - xi), 0.1))
+  }
+  
+  # Extract values from input vectors
+  x1 <- concept1[1]
+  x2 <- concept1[2]
+  x3 <- concept2[1]
+  x4 <- concept2[2]
+  
+  # Calculate semantic distance
+  num <- (x1 + x4) - (x2 + x3)
+  denom <- sqrt(sig(x1)^2 + sig(x2)^2 + sig(x3)^2 + sig(x4)^2)
+  prob_dx_gt_zero <- pnorm(num / denom)
+  prob_dx_lt_zero <- 1 - prob_dx_gt_zero
+  semantic_distance <- abs(prob_dx_gt_zero - prob_dx_lt_zero)
+  
+  # Global assignment (1 = outer vs. 0 = inner edges)
+  assignDiff <- (x1 + x4) - (x2 + x3)
+  if (assignDiff > 0) {
+    assign <- 1
+  } else if (assignDiff < 0) {
+    assign <- 0
+  } else {
+    assign <- NA
+  }
+  
+  return(list(semantic_distance = semantic_distance, assign = assign))
+}
+```
