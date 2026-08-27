@@ -177,6 +177,10 @@
             "tall": [7, 7]
         };
 
+        //define jitter in experiment, not plugin
+        var jitter = 1;
+
+
         //all ordered texture pairs (no repeats)
         function getTexturePairs(textures) {
             var pairs = [];
@@ -226,12 +230,35 @@
         concept_list.forEach(function (concept) {
             texture_pairs.forEach(function (texture_pairs) {
                 height_pairs.forEach(function (height_pairs) {
+
+                    //original heights
+                    var left_bar_height = heights[height_pairs[0]];
+                    var right_bar_height = heights[height_pairs[1]];
+
+                    //jitter calculation
+                    var left_jitter = Math.round((Math.random() * 2 - 1) * jitter);
+                    var right_jitter = Math.round((Math.random() * 2 - 1) * jitter);
+
+                    //final height
+                    var final_left = left_bar_height[0] + left_jitter;
+                    var final_right = right_bar_height[0] + right_jitter;
+
                     trials.push({
                         prompt: concept,
                         left_texture: texture_pairs[0],
                         right_texture: texture_pairs[1],
-                        left_bar_height: heights[height_pairs[0]],
-                        right_bar_height: heights[height_pairs[1]]
+
+                        // Original height condition
+                        left_bar_height: left_bar_height,
+                        right_bar_height: right_bar_height,
+
+                        // Jitter
+                        left_jitter: left_jitter,
+                        right_jitter: right_jitter,
+
+                        // Actual height used
+                        final_left: final_left,
+                        final_right: final_right
                     });
                 });
             });
@@ -243,14 +270,18 @@
         var assign_trial = {
             type: jsPsychTextureBarChoice,
             prompt: jsPsych.timelineVariable('prompt'),
-            left_height_range: jsPsych.timelineVariable('left_bar_height'),
-            right_height_range: jsPsych.timelineVariable('right_bar_height'),
+            left_height: jsPsych.timelineVariable('final_left'),
+            right_height: jsPsych.timelineVariable('final_right'),
             left_texture: jsPsych.timelineVariable('left_texture'),
             right_texture: jsPsych.timelineVariable('right_texture'),
-            jitter: 1,
+            next_trial: jsPsych.timelineVariable('next_trial'),
             bg_color: "rgb(128,128,128)",
             choices: ['arrowleft', 'arrowright'],
-            response_ends_trial: true
+            response_ends_trial: true,
+
+            on_finish: function (data) {
+                console.log("Completed trial:", data);
+            }
         };
 
         var iti = {
@@ -273,6 +304,13 @@
             shuffledTrials.slice(blockSize * 3)
         ];
 
+        // Give every trial a reference to the next trial
+        blocks.forEach(block => {
+            for (let i = 0; i < block.length; i++) {
+                block[i].next_trial = block[i + 1] || null;
+            }
+        });
+
         const totalBlocks = blocks.length;
 
         // Add each block to the timeline
@@ -280,8 +318,8 @@
             // Add the trials in this block
             timeline.push({
                 timeline: [iti, assign_trial],
-                timeline_variables: block.map(t => ({ ...t })),
-                randomize_order: true
+                timeline_variables: block.map(t => ({ ...t }))
+                //randomize_order: true
             });
 
             // Add a break after every block EXCEPT the last one
