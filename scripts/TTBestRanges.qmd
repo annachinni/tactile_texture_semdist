@@ -806,6 +806,8 @@ evil_peace_best_pairs <- evil_peace %>%
   distinct(texture1, texture2, .keep_all = TRUE)
 ```
 
+IMPORTANT: G75 and S22 produce a tie for optimal assignment for the concept set evil and peace. Therefore we selected the next set with the highest range of semantic distances that did not include the G75 and S22 pairing. This was the 3rd best range with a minuscule difference and had a lower MSE. That is the set we selected for the experiment to avoid over complicating the optimal assignment for coding accuracy. 
+
 ```{r}
 evil_peace_best_textures
 ```
